@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bencina Metropolitana</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        :root {
+            --bg-1: #0f172a;
+            --bg-2: #1a2438;
+            --card: rgba(15, 23, 42, 0.78);
+            --card-border: rgba(148, 163, 184, 0.24);
+            --text-main: #e2e8f0;
+            --text-soft: #94a3b8;
+            --primary: #60a5fa;
+            --accent: #22d3ee;
+            --success-soft: rgba(34, 197, 94, 0.22);
+            --warning-soft: rgba(249, 115, 22, 0.22);
+            --danger-soft: rgba(239, 68, 68, 0.22);
+        }
+        html, body {
+            min-height: 100%;
+        }
+        body {
+            background:
+                radial-gradient(1200px 700px at 8% -10%, rgba(34, 211, 238, 0.14), transparent 55%),
+                radial-gradient(1000px 700px at 95% 0%, rgba(96, 165, 250, 0.12), transparent 55%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-2));
+            color: var(--text-main);
+        }
+        .app-shell {
+            max-width: 1360px;
+        }
+        .title-main {
+            letter-spacing: 0.4px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            box-shadow: 0 14px 42px rgba(2, 6, 23, 0.36);
+            backdrop-filter: blur(10px);
+        }
+        .panel-title {
+            color: #f1f5f9;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .panel-subtle {
+            color: var(--text-soft);
+            font-size: 0.9rem;
+        }
+        .soft-info {
+            border: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.52);
+            color: var(--text-main);
+        }
+        .legend-chip {
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            padding: 4px 10px;
+        }
+        .filtros-mini {
+            opacity: 0.85;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .filtros-mini:hover,
+        .filtros-mini:focus-within {
+            opacity: 1;
+        }
+        .filtros-mini .form-select,
+        .filtros-mini .btn {
+            font-size: 0.8rem;
+            padding-top: 0.28rem;
+            padding-bottom: 0.28rem;
+            border-radius: 9px;
+        }
+        .filtros-mini .form-select {
+            background-color: rgba(15, 23, 42, 0.65);
+            color: #e2e8f0;
+            border-color: rgba(148, 163, 184, 0.35);
+        }
+        .filtros-mini .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 0.2rem rgba(34, 211, 238, 0.15);
+        }
+        .filtros-mini .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            border: none;
+        }
+        .mapa-wrap {
+            position: relative;
+        }
+        #mapa-estaciones {
+            border-color: rgba(148, 163, 184, 0.25) !important;
+            min-height: 360px;
+        }
+        .comparador-flotante {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 900;
+            width: min(360px, calc(100% - 20px));
+            background: rgba(15, 23, 42, 0.94);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 10px;
+            color: #e2e8f0;
+            box-shadow: 0 8px 24px rgba(2, 6, 23, 0.4);
+            padding: 10px;
+        }
+        .table-wrap {
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .table-modern {
+            color: #e2e8f0;
+            margin-bottom: 0;
+        }
+        .table-modern > :not(caption) > * > * {
+            background-color: rgba(15, 23, 42, 0.84);
+            color: #e2e8f0;
+        }
+        .table-modern tbody tr:nth-child(even) td {
+            background-color: rgba(15, 23, 42, 0.74);
+        }
+        .table-modern thead th {
+            font-size: 0.84rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #93c5fd;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom-color: rgba(148, 163, 184, 0.25);
+        }
+        .table-modern tbody td {
+            border-top-color: rgba(148, 163, 184, 0.17);
+        }
+        .table-modern tbody tr:hover {
+            background: rgba(59, 130, 246, 0.08);
+        }
+        .pagination .page-link {
+            background: rgba(15, 23, 42, 0.8);
+            color: #e2e8f0;
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+        .pagination .page-item.disabled .page-link {
+            background: rgba(15, 23, 42, 0.55);
+            color: #94a3b8;
+        }
+        .promo-slot {
+            border: 1px dashed rgba(148, 163, 184, 0.35);
+            background: rgba(15, 23, 42, 0.46);
+            border-radius: 10px;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            padding: 8px 10px;
+        }
+        .promo-slot a {
+            color: inherit;
+            text-decoration: none;
+            display: block;
+        }
+        .promo-slot a:hover {
+            text-decoration: none;
+        }
+        .promo-slot strong {
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            margin-right: 4px;
+        }
+        .promo-cta {
+            margin-left: 6px;
+            color: #67e8f9;
+            font-weight: 600;
+        }
+        .hint-touch {
+            color: #93c5fd;
+            font-size: 0.76rem;
+            margin-top: 4px;
+        }
+        .sucursal-btn {
+            background: transparent;
+            border: 0;
+            color: #e2e8f0;
+            padding: 0;
+            margin: 0;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+        }
+        .sucursal-btn:hover,
+        .sucursal-btn:focus {
+            color: #7dd3fc;
+            outline: none;
+        }
+        .direccion-expandida {
+            display: none;
+            margin-top: 2px;
+            font-size: 0.66rem !important;
+            line-height: 1.1;
+        }
+        .direccion-expandida.show {
+            display: block;
+        }
+        .table-mobile {
+            width: 100%;
+            min-width: 0;
+            table-layout: fixed;
+        }
+        @media (max-width: 768px) {
+            .app-shell {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            .title-main {
+                font-size: 1.15rem;
+                margin-bottom: 0.9rem !important;
+            }
+            .panel {
+                border-radius: 12px;
+            }
+            #mapa-estaciones {
+                min-height: 290px;
+                height: 290px !important;
+            }
+            .comparador-flotante {
+                position: static;
+                width: 100%;
+                padding: 8px;
+                margin-top: 8px;
+            }
+            #ranking {
+                align-items: stretch !important;
+            }
+            #ranking > div:first-child {
+                width: 100%;
+            }
+            .filtros-mini {
+                width: 100%;
+                opacity: 1;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px !important;
+            }
+            .filtros-mini .form-select,
+            .filtros-mini .btn,
+            .filtros-mini a.btn {
+                width: 100% !important;
+                min-height: 36px;
+            }
+            .filtros-mini .btn {
+                font-weight: 600;
+            }
+            .promo-slot {
+                font-size: 0.74rem;
+                padding: 7px 9px;
+            }
+            .table-mobile thead th {
+                position: sticky;
+                top: 0;
+                z-index: 3;
+            }
+            .table-mobile th,
+            .table-mobile td {
+                white-space: nowrap;
+                font-size: 0.67rem;
+                padding: 0.34rem 0.2rem;
+            }
+            .table-mobile .fw-semibold {
+                font-size: 0.7rem;
+                line-height: 1.05;
+            }
+            .table-mobile .panel-subtle {
+                font-size: 0.6rem !important;
+                line-height: 1.05;
+            }
+            .table-mobile .text-end {
+                letter-spacing: -0.01em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container py-4 app-shell">
+        <h1 class="h3 mb-3 title-main">Bencina Metropolitana</h1>
+
+        <section class="panel p-3 mb-3">
+            <h2 class="h5 panel-title">Mapa de estaciones RM</h2>
+            <div class="d-flex gap-2 flex-wrap mb-2 small">
+                <span class="legend-chip" style="background:hsl(120,85%,45%); color:#052e16;">Barato</span>
+                <span class="legend-chip" style="background:hsl(60,85%,45%); color:#422006;">Intermedio</span>
+                <span class="legend-chip" style="background:hsl(0,85%,45%); color:#450a0a;">Caro</span>
+                <button id="toggle-comparar" type="button" class="btn btn-sm btn-outline-primary ms-2">Comparar: OFF</button>
+            </div>
+            <div class="mapa-wrap">
+                <div id="mapa-estaciones" style="height: 420px;" class="rounded border"></div>
+                <div id="comparador-flotante" class="comparador-flotante d-none">
+                    <div class="fw-semibold mb-1">Comparador</div>
+                    <div id="comparador-contenido" class="small">Selecciona 2 puntos.</div>
+                </div>
+            </div>
+            <div id="mapa-error" class="alert alert-warning mt-2 d-none mb-0 soft-info">
+                No se pudo cargar el mapa interactivo. Revisa conexion o bloqueos del navegador.
+            </div>
+        </section>
+        {% for banner in banners_superiores %}
+            <div class="promo-slot mb-3">
+                {% if banner.url_destino %}
+                    <a href="{{ banner.url_destino }}" target="_blank" rel="noopener">
+                        <strong>{{ banner.titulo }}</strong>
+                        {{ banner.descripcion }}
+                        {% if banner.etiqueta_cta %}<span class="promo-cta">{{ banner.etiqueta_cta }}</span>{% endif %}
+                    </a>
+                {% else %}
+                    <strong>{{ banner.titulo }}</strong>
+                    {{ banner.descripcion }}
+                    {% if banner.etiqueta_cta %}<span class="promo-cta">{{ banner.etiqueta_cta }}</span>{% endif %}
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="promo-slot mb-3 text-center">
+                <strong>Espacio anuncio</strong>
+                Zona disponible para anuncio superior.
+            </div>
+        {% endfor %}
+
+        <div id="ranking" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <div class="small">
+                <span class="legend-chip" style="background:#dff4df;color:#1f5130;">Barato</span>
+                <span class="legend-chip" style="background:#ffe8cc;color:#7a4e00;">Intermedio</span>
+                <span class="legend-chip" style="background:#ffd9d9;color:#8a1f1f;">Caro</span>
+                <span class="panel-subtle">Clasificado por categoria (93, 95, 97, Diesel).</span>
+                <div class="hint-touch">Tip: toca el nombre de la sucursal para ver la direccion.</div>
+            </div>
+            <form id="filtros-ranking" method="get" class="d-flex flex-wrap gap-1 filtros-mini">
+                <select id="comuna" name="comuna" class="form-select form-select-sm" style="width: 150px;">
+                    <option value="">Comuna</option>
+                    {% for c in comunas_disponibles %}
+                        <option value="{{ c }}" {% if filtros.comuna == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+                <select id="marca" name="marca" class="form-select form-select-sm" style="width: 130px;">
+                    <option value="">Marca</option>
+                    {% for item in marcas_disponibles %}
+                        <option value="{{ item }}" {% if filtros.marca == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+                <select id="combustible_lista" name="combustible_lista" class="form-select form-select-sm" style="width: 95px;">
+                    <option value="todos" {% if filtros.combustible_lista == "todos" %}selected{% endif %}>Todos</option>
+                    {% for c in combustibles_lista %}
+                        <option value="{{ c }}" {% if filtros.combustible_lista == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+                <select id="per_page" name="per_page" class="form-select form-select-sm" style="width: 80px;">
+                    <option value="25" {% if filtros.per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if filtros.per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if filtros.per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                <a href="?combustible_lista=todos&per_page=25#ranking" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+            </form>
+        </div>
+        <div class="panel table-wrap">
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-modern">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Marca</th>
+                            <th>Direccion</th>
+                            <th>Comuna</th>
+                            <th class="text-end">93</th>
+                            <th class="text-end">95</th>
+                            <th class="text-end">97</th>
+                            <th class="text-end">Diesel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in estaciones %}
+                            <tr>
+                                <td>{{ forloop.counter0|add:estaciones.start_index }}</td>
+                                <td>{{ row.marca }}</td>
+                                <td>{{ row.direccion }}</td>
+                                <td>{{ row.comuna }}</td>
+                                <td class="text-end" style="{{ row.s93 }}">{% if row.p93 %}${{ row.p93 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.s95 }}">{% if row.p95 %}${{ row.p95 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.s97 }}">{% if row.p97 %}${{ row.p97 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.sdiesel }}">{% if row.pdiesel %}${{ row.pdiesel }}{% else %}-{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">No hay estaciones disponibles.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive d-md-none">
+                <table class="table table-modern table-mobile">
+                    <colgroup>
+                        <col style="width: 34%;">
+                        <col style="width: 16.5%;">
+                        <col style="width: 16.5%;">
+                        <col style="width: 16.5%;">
+                        <col style="width: 16.5%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Marca</th>
+                            <th class="text-end">93</th>
+                            <th class="text-end">95</th>
+                            <th class="text-end">97</th>
+                            <th class="text-end">Diesel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in estaciones %}
+                            <tr>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="sucursal-btn fw-semibold"
+                                        data-target="direccion-mobile-{{ forloop.counter0 }}"
+                                        aria-expanded="false"
+                                    >
+                                        {{ row.marca }}
+                                    </button>
+                                    <div id="direccion-mobile-{{ forloop.counter0 }}" class="direccion-expandida panel-subtle">
+                                        {{ row.direccion }}
+                                    </div>
+                                    <div class="panel-subtle" style="font-size:0.72rem;">{{ row.comuna }}</div>
+                                </td>
+                                <td class="text-end" style="{{ row.s93 }}">{% if row.p93 %}${{ row.p93 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.s95 }}">{% if row.p95 %}${{ row.p95 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.s97 }}">{% if row.p97 %}${{ row.p97 }}{% else %}-{% endif %}</td>
+                                <td class="text-end" style="{{ row.sdiesel }}">{% if row.pdiesel %}${{ row.pdiesel }}{% else %}-{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 panel-subtle">No hay estaciones disponibles.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% for banner in banners_inferiores %}
+            <div class="promo-slot mt-3">
+                {% if banner.url_destino %}
+                    <a href="{{ banner.url_destino }}" target="_blank" rel="noopener">
+                        <strong>{{ banner.titulo }}</strong>
+                        {{ banner.descripcion }}
+                        {% if banner.etiqueta_cta %}<span class="promo-cta">{{ banner.etiqueta_cta }}</span>{% endif %}
+                    </a>
+                {% else %}
+                    <strong>{{ banner.titulo }}</strong>
+                    {{ banner.descripcion }}
+                    {% if banner.etiqueta_cta %}<span class="promo-cta">{{ banner.etiqueta_cta }}</span>{% endif %}
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="promo-slot mt-3 text-center">
+                <strong>Espacio anuncio</strong>
+                Zona disponible para anuncio inferior.
+            </div>
+        {% endfor %}
+
+        <nav class="mt-3">
+            <ul class="pagination">
+                {% if estaciones.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?comuna={{ filtros.comuna }}&marca={{ filtros.marca }}&combustible_lista={{ filtros.combustible_lista }}&per_page={{ filtros.per_page }}&page={{ estaciones.previous_page_number }}#ranking">Anterior</a>
+                    </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Pagina {{ estaciones.number }} de {{ estaciones.paginator.num_pages }}</span>
+                </li>
+                {% if estaciones.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?comuna={{ filtros.comuna }}&marca={{ filtros.marca }}&combustible_lista={{ filtros.combustible_lista }}&per_page={{ filtros.per_page }}&page={{ estaciones.next_page_number }}#ranking">Siguiente</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </main>
+    {{ puntos_mapa|json_script:"puntos-mapa-data" }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        (function () {
+            var dataElement = document.getElementById("puntos-mapa-data");
+            var puntos = dataElement ? JSON.parse(dataElement.textContent) : [];
+            var errorBox = document.getElementById("mapa-error");
+            var comparadorBox = document.getElementById("comparador-flotante");
+            var comparadorContenido = document.getElementById("comparador-contenido");
+            var toggleCompararBtn = document.getElementById("toggle-comparar");
+            var seleccionComparar = [];
+            var compareMode = false;
+
+            if (typeof L === "undefined") {
+                if (errorBox) {
+                    errorBox.classList.remove("d-none");
+                }
+                return;
+            }
+
+            var santiagoCenter = [-33.45, -70.66];
+            var santiagoBounds = [[-34.2, -71.2], [-33.0, -70.1]];
+            var map = L.map("mapa-estaciones", {
+                maxBounds: santiagoBounds,
+                closePopupOnClick: false,
+                maxBoundsViscosity: 1.0
+            }).setView(santiagoCenter, 10);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 18,
+                attribution: "&copy; OpenStreetMap contributors",
+                referrerPolicy: "origin"
+            }).addTo(map);
+
+            if (!puntos.length) {
+                return;
+            }
+
+            var bounds = [];
+            var puntosById = {};
+            var markerById = {};
+            puntos.forEach(function (punto) {
+                var color = "hsl(" + punto.hue + ", 85%, 45%)";
+                var marker = L.circleMarker([punto.latitud, punto.longitud], {
+                    radius: 7,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.85,
+                    weight: 1
+                }).addTo(map);
+                var listaPrecios = "<ul style='padding-left:18px;margin:6px 0;'>";
+                (punto.precios || []).forEach(function (p) {
+                    listaPrecios += "<li>" + p.nombre + ": <strong>$" + p.precio + "</strong></li>";
+                });
+                listaPrecios += "</ul>";
+
+                marker.bindPopup(
+                    "<strong>" + punto.marca + "</strong><br>" +
+                    punto.comuna + "<br>" +
+                    punto.direccion + "<br>" +
+                    "<span class='small text-muted'>Precio referencia: $" + punto.precio_referencia + "</span>" +
+                    listaPrecios,
+                    { autoClose: false, closeOnClick: false }
+                );
+                marker.on("click", function () {
+                    if (!compareMode) {
+                        return;
+                    }
+                    if (seleccionComparar.some(function (x) { return x.point_id === punto.point_id; })) {
+                        return;
+                    }
+                    if (seleccionComparar.length >= 2) {
+                        var old = seleccionComparar.shift();
+                        var oldMarker = markerById[old.point_id];
+                        if (oldMarker) {
+                            oldMarker.setStyle({ weight: 1, radius: 7 });
+                        }
+                    }
+                    seleccionComparar.push(punto);
+                    marker.setStyle({ weight: 3, radius: 9 });
+                    marker.openPopup();
+                    renderComparador();
+                });
+                puntosById[punto.point_id] = punto;
+                markerById[punto.point_id] = marker;
+                bounds.push([punto.latitud, punto.longitud]);
+            });
+
+            function renderComparador() {
+                if (!comparadorBox || !comparadorContenido) {
+                    return;
+                }
+                if (!compareMode) {
+                    comparadorBox.classList.add("d-none");
+                    return;
+                }
+                comparadorBox.classList.remove("d-none");
+                if (seleccionComparar.length < 2) {
+                    comparadorBox.classList.remove("d-none");
+                    comparadorContenido.innerHTML = "Selecciona 2 puntos para comparar. Seleccionados: " + seleccionComparar.length + "/2";
+                    return;
+                }
+
+                var a = seleccionComparar[0];
+                var b = seleccionComparar[1];
+                var categorias = ["93", "95", "97", "Diesel"];
+                var aMap = {};
+                var bMap = {};
+                (a.precios || []).forEach(function (x) { aMap[x.nombre] = x.precio; });
+                (b.precios || []).forEach(function (x) { bMap[x.nombre] = x.precio; });
+
+                var html = "<div><strong>" + a.marca + "</strong> vs <strong>" + b.marca + "</strong></div>";
+                html += "<table class='table table-sm mb-1'><thead><tr><th>Comb.</th><th>A</th><th>B</th><th>Mejor</th></tr></thead><tbody>";
+                categorias.forEach(function (c) {
+                    var pa = aMap[c];
+                    var pb = bMap[c];
+                    var mejor = "-";
+                    if (pa != null && pb != null) {
+                        if (pa < pb) mejor = "A";
+                        else if (pb < pa) mejor = "B";
+                        else mejor = "Empate";
+                    }
+                    html += "<tr><td>" + c + "</td><td>" + (pa != null ? "$" + pa : "-") + "</td><td>" + (pb != null ? "$" + pb : "-") + "</td><td>" + mejor + "</td></tr>";
+                });
+                html += "</tbody></table>";
+                html += "<button id='reset-comparador' class='btn btn-sm btn-outline-secondary'>Limpiar comparacion</button>";
+                comparadorContenido.innerHTML = html;
+            }
+
+            function limpiarComparacion() {
+                seleccionComparar.forEach(function (p) {
+                    var m = markerById[p.point_id];
+                    if (m) {
+                        m.setStyle({ weight: 1, radius: 7 });
+                    }
+                });
+                seleccionComparar = [];
+                Object.keys(markerById).forEach(function (id) {
+                    var m = markerById[id];
+                    if (m) {
+                        m.closePopup();
+                    }
+                });
+            }
+
+            if (toggleCompararBtn) {
+                toggleCompararBtn.addEventListener("click", function () {
+                    compareMode = !compareMode;
+                    toggleCompararBtn.textContent = "Comparar: " + (compareMode ? "ON" : "OFF");
+                    toggleCompararBtn.classList.toggle("btn-primary", compareMode);
+                    toggleCompararBtn.classList.toggle("btn-outline-primary", !compareMode);
+                    if (!compareMode) {
+                        limpiarComparacion();
+                    }
+                    renderComparador();
+                });
+            }
+
+            document.addEventListener("click", function (event) {
+                if (event.target && event.target.id === "reset-comparador") {
+                    limpiarComparacion();
+                    compareMode = true;
+                    if (toggleCompararBtn) {
+                        toggleCompararBtn.textContent = "Comparar: ON";
+                        toggleCompararBtn.classList.add("btn-primary");
+                        toggleCompararBtn.classList.remove("btn-outline-primary");
+                    }
+                    renderComparador();
+                }
+            });
+
+            var filtrosForm = document.getElementById("filtros-ranking");
+            if (filtrosForm) {
+                filtrosForm.addEventListener("submit", function () {
+                    window.sessionStorage.setItem("scroll_to_ranking", "1");
+                });
+            }
+            if (window.sessionStorage.getItem("scroll_to_ranking") === "1") {
+                var rankingEl = document.getElementById("ranking");
+                if (rankingEl) {
+                    rankingEl.scrollIntoView({ behavior: "auto", block: "start" });
+                }
+                window.sessionStorage.removeItem("scroll_to_ranking");
+            }
+
+            document.addEventListener("click", function (event) {
+                var btn = event.target.closest(".sucursal-btn");
+                if (!btn) {
+                    return;
+                }
+                var targetId = btn.getAttribute("data-target");
+                if (!targetId) {
+                    return;
+                }
+                var panel = document.getElementById(targetId);
+                if (!panel) {
+                    return;
+                }
+                var isOpen = panel.classList.toggle("show");
+                btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            });
+
+            renderComparador();
+            if (bounds.length) {
+                map.fitBounds(bounds, {padding: [20, 20]});
+            } else {
+                map.fitBounds(santiagoBounds, {padding: [20, 20]});
+            }
+        })();
+    </script>
+</body>
+</html>
